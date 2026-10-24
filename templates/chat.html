@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Vanish</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- The whole chat. `inert` keeps it unusable until you join. -->
+  <div class="app" id="app" inert>
+    <header class="topbar">
+      <div class="brand"><span class="logo" aria-hidden="true"></span>vanish</div>
+
+      <div class="status">
+        <span class="pulse" aria-hidden="true"></span>
+        <span id="online">1 online</span>
+      </div>
+
+      <button class="ghost" id="leave" type="button">Leave</button>
+    </header>
+
+    <main class="messages" id="messages" aria-live="polite">
+      <div class="messages-inner" id="messages-inner"></div>
+    </main>
+
+    <form class="composer" id="composer" autocomplete="off">
+      <div class="composer-inner">
+        <input id="message-input" type="text" maxlength="500"
+               placeholder="Write a message…" aria-label="Message" required>
+        <button class="send" type="submit" aria-label="Send">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14M13 6l6 6-6 6"/>
+          </svg>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Join modal: opens on load and can't be dismissed -->
+  <dialog id="join-dialog" aria-labelledby="join-title">
+    <form id="join-form" autocomplete="off">
+      <div class="join-badge" aria-hidden="true"></div>
+      <h1 id="join-title">Enter a room</h1>
+      <p class="hint">Everyone who types the same password lands in the same room.
+        When the last person leaves, the room and its messages vanish.</p>
+
+      <label for="nickname">Nickname</label>
+      <input type="text" id="nickname" maxlength="20" placeholder="e.g. mango" required>
+
+      <label for="password">Room password</label>
+      <div class="row">
+        <input type="password" id="password" minlength="8" placeholder="at least 8 characters" required>
+        <button class="ghost" type="button" id="generate" title="Generate a random passphrase">Generate</button>
+      </div>
+      <p class="hint small" id="generated-note" hidden></p>
+      <p class="error" id="join-error" role="alert" hidden></p>
+      <button class="primary" type="submit">Join room</button>
+    </form>
+  </dialog>
+
+  <script src="{{ url_for('static', filename='chat.js') }}"></script>
+</body>
+</html>
