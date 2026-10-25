@@ -149,7 +149,8 @@ joinForm.addEventListener("submit", async (e) => {
 
   const nick = document.getElementById("nickname").value.trim();
   const password = document.getElementById("password").value;
-
+  const submitBtn = joinForm.querySelector(".primary");
+  submitBtn.disabled = true;
   let result;
   try {
     const res = await fetch("/join", {
@@ -161,7 +162,7 @@ joinForm.addEventListener("submit", async (e) => {
   } catch {
     result = { ok: false, error: "Could not reach the server." };
   }
-
+  submitBtn.disabled = false;
   if (!result.ok) {
     showJoinError(result.error);
     return;
@@ -170,6 +171,8 @@ joinForm.addEventListener("submit", async (e) => {
   nickname = nick;
   lastId = result.since;                  // start after the join, so no old history
   dialog.close();
+  document.getElementById("password").value = "";
+  document.getElementById("password").type = "password";
   app.removeAttribute("inert");
   input.focus();
   addSystem("You joined the room");
@@ -178,25 +181,137 @@ joinForm.addEventListener("submit", async (e) => {
 
 // ---------- sending ----------
 
+// ---------- sending ----------
+
+// ---------- sending ----------
+
+// To add a command: add one entry here. `hidden: true` keeps it out of the suggestions.
+const COMMANDS = [
+  {
+    name: "agent",
+    hint: "<question>",
+    description: "Ask the AI assistant",
+    run: async (arg) => {
+      if (!arg) { addSystem("Usage: /agent your question"); return; }
+      await send("/agent", { text: arg });
+    },
+  },
+];
+
+async function send(url, payload) {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 429) { addSystem("Slow down a little."); return; }
+    const result = await res.json();
+    if (!result.ok) addSystem(result.error);
+    else poll();
+  } catch {
+    addSystem("Message failed to send.");
+  }
+}
+
 composer.addEventListener("submit", async (e) => {
   e.preventDefault();
+  closeCommands();
   const text = input.value.trim();
   if (!text) return;
   input.value = "";
 
-  try {
-    const res = await fetch("/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-    const result = await res.json();
-    if (!result.ok) addSystem(result.error);
-    else poll();                          // show it right away instead of waiting for the timer
-  } catch {
-    addSystem("Message failed to send.");
+  // "/name rest of the message"
+  const m = text.match(/^\/([a-z]+)(?:\s+([\s\S]*))?$/i);
+  const cmd = m && COMMANDS.find((c) => c.name === m[1].toLowerCase());
+
+  if (cmd) await cmd.run((m[2] || "").trim());
+  else await send("/send", { text });      // unknown "/something" is just a normal message
+});
+
+
+// ---------- command autocomplete ----------
+
+const commandList = document.getElementById("commands");
+let matches = [];
+let selected = 0;
+
+function closeCommands() {
+  commandList.hidden = true;
+  matches = [];
+}
+
+function renderCommands() {
+  commandList.replaceChildren();
+  matches.forEach((c, i) => {
+    const li = document.createElement("li");
+    li.className = "command" + (i === selected ? " active" : "");
+    li.setAttribute("role", "option");
+    li.setAttribute("aria-selected", String(i === selected));
+
+    const name = document.createElement("span");
+    name.className = "cmd-name";
+    name.textContent = "/" + c.name;
+
+    const hint = document.createElement("span");
+    hint.className = "cmd-hint";
+    hint.textContent = c.hint || "";
+
+    const desc = document.createElement("span");
+    desc.className = "cmd-desc";
+    desc.textContent = c.description || "";
+
+    li.append(name, hint, desc);
+    // mousedown (not click) so the input doesn't lose focus first
+    li.addEventListener("mousedown", (e) => { e.preventDefault(); chooseCommand(i); });
+    commandList.append(li);
+  });
+  commandList.hidden = false;
+}
+
+function updateCommands() {
+  // only while typing the command word itself: "/" plus letters, no space yet
+  const m = input.value.match(/^\/([a-z]*)$/i);
+  if (!m) return closeCommands();
+
+  const typed = m[1].toLowerCase();
+  matches = COMMANDS.filter((c) => !c.hidden && c.name.startsWith(typed));
+  if (!matches.length) return closeCommands();
+
+  selected = 0;
+  renderCommands();
+}
+
+function chooseCommand(i) {
+  input.value = "/" + matches[i].name + " ";
+  closeCommands();
+  input.focus();
+}
+
+input.addEventListener("input", updateCommands);
+
+input.addEventListener("keydown", (e) => {
+  if (commandList.hidden) return;
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    selected = (selected + 1) % matches.length;
+    renderCommands();
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    selected = (selected - 1 + matches.length) % matches.length;
+    renderCommands();
+  } else if (e.key === "Tab" || e.key === "Enter") {
+    e.preventDefault();                      // Enter completes instead of sending
+    chooseCommand(selected);
+  } else if (e.key === "Escape") {
+    closeCommands();
   }
 });
+
+input.addEventListener("blur", () => setTimeout(closeCommands, 100));
+
+
 
 // ---------- receiving (polling) ----------
 

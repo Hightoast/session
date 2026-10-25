@@ -3,6 +3,8 @@ import os
 import secrets
 import threading
 import time
+import requests
+
 
 from flask import Flask, jsonify, render_template, request, session
 from flask_limiter import Limiter
@@ -14,7 +16,27 @@ MAX_NICKNAME = 20
 MAX_ROOMS = 200
 MAX_MEMBERS = 30
 MAX_MESSAGES = 300
+#-------------------AI test---------------------------
 
+
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_KEY = os.environ.get("GROQ_API_KEY")
+AI_MODEL = os.environ.get("AI_MODEL", "qwen/qwen3.8-27b")
+AI_SYSTEM = "You are a helpful assistant."
+MAX_AI_INPUT = 2000          # characters per message
+MAX_AI_HISTORY = 20          # messages remembered per chat
+MAX_AI_CHATS = 50            # chats kept in memory at once
+
+ai_histories = {}            # chat_id -> list of {"role", "content"}
+ai_lock = threading.Lock()
+
+
+AGENT_SYSTEM = ("You are an assistant inside a group chat. Each user message starts with "
+                "the speaker's name. Keep answers short and address people by name.")
+
+
+
+#--------------------------------------------------------------
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config.update(
@@ -112,6 +134,8 @@ def join():
 
     if not nickname or len(nickname) > MAX_NICKNAME:
         return jsonify(ok=False, error=f"Nickname must be 1-{MAX_NICKNAME} characters."), 400
+    if nickname.lower() == "agent":
+        return jsonify(ok=False, error="That nickname is reserved."), 400
     if len(password) < MIN_PASSWORD:
         return jsonify(ok=False, error=f"Password must be at least {MIN_PASSWORD} characters."), 400
 
@@ -189,3 +213,56 @@ def leave():
     remove_member(session.get("room_id"), session.get("member_id"))
     session.clear()
     return jsonify(ok=True)
+
+
+
+#-------------------AI logic---------------------------
+
+
+@app.post("/agent")
+@limiter.limit("10/minute")
+def agent():
+    room, member = current_member()
+    if room is None:
+        return jsonify(ok=False, error="Not in a room."), 401
+    if not GROQ_KEY:
+        return jsonify(ok=False, error="The agent is not configured."), 503
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        data = {}
+    text = str(data.get("text", "")).strip()
+    if not text or len(text) > MAX_AI_INPUT:
+        return jsonify(ok=False, error=f"Ask between 1 and {MAX_AI_INPUT} characters."), 400
+
+    with rooms_lock:
+        member["last_seen"] = time.time()
+        add_message(room, member["nickname"], "/agent " + text)     # everyone sees the question
+        history = room.setdefault("agent_history", [])
+        history.append({"role": "user", "content": f"{member['nickname']}: {text}"})
+        del history[:-MAX_AI_HISTORY]
+        messages = [{"role": "system", "content": AGENT_SYSTEM}] + list(history)
+
+    try:
+        res = requests.post(
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {GROQ_KEY}"},
+            json={"model": AI_MODEL, "messages": messages, "max_tokens": 600},
+            timeout=60,
+        )
+        res.raise_for_status()
+        reply = res.json()["choices"][0]["message"]["content"].strip()
+    except (requests.RequestException, KeyError, IndexError, ValueError):
+        with rooms_lock:
+            if history and history[-1]["role"] == "user":
+                history.pop()
+            add_message(room, "", "The agent did not answer.", kind="system")
+        return jsonify(ok=False, error="The agent did not answer."), 502
+
+    with rooms_lock:
+        history.append({"role": "assistant", "content": reply})
+        del history[:-MAX_AI_HISTORY]
+        add_message(room, "Agent", reply, kind="agent")
+
+    return jsonify(ok=True)
+#--------------------------------------------------------------
