@@ -16,7 +16,7 @@ MAX_MEMBERS = 30
 MAX_MESSAGES = 300
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,      # JS can't read the cookie
     SESSION_COOKIE_SAMESITE="Strict",  # other sites can't make your browser send it
