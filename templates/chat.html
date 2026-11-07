@@ -8,6 +8,8 @@
 </head>
 <body>
   <div id="leaves-root" aria-hidden="true"></div>
+  <div id="leaves-root" aria-hidden="true"
+     data-image="{{ url_for('static', filename='/static/img/snowflake.png') }}"></div>
   <!-- The whole chat. `inert` keeps it unusable until you join. -->
   <div class="app" id="app" inert>
     <header class="topbar">
@@ -61,7 +63,7 @@
       <button class="primary" type="submit">Join room</button>
     </form>
   </dialog>
-  <script src="{{ url_for('static', filename='leaves/leaves.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='snow/snow.js') }}" defer></script>
   <script src="{{ url_for('static', filename='chat.js') }}"></script>
   
   <script src="{{ url_for('static', filename='chat.js') }}"></script>

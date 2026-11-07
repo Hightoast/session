@@ -10,9 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "falling-leaves": "^0.1.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "react-snowfall": "^2.4.0"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

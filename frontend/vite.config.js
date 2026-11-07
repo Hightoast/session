@@ -5,13 +5,13 @@ export default defineConfig({
   plugins: [react()],
   define: { "process.env.NODE_ENV": JSON.stringify("production") },
   build: {
-    outDir: "../static/leaves",
+    outDir: "../static/snow",
     emptyOutDir: true,
     lib: {
-      entry: "src/leaves.jsx",
+      entry: "src/snow.jsx",
       formats: ["iife"],
-      name: "VanishLeaves",
-      fileName: () => "leaves.js",
+      name: "VanishSnow",
+      fileName: () => "snow.js",
     },
   },
 });

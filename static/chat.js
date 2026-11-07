@@ -1,5 +1,3 @@
-// ===== Chat client =====
-
 const app = document.getElementById("app");
 const dialog = document.getElementById("join-dialog");
 const joinForm = document.getElementById("join-form");
