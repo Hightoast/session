@@ -371,3 +371,18 @@ dialog::backdrop {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+
+
+/* ---------- falling leaves ---------- */
+
+#leaves-root {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;                 /* clicks go through to the chat */
+}
+
+#leaves-root * { pointer-events: none; }
+
+.app { position: relative; z-index: 1; }   /* chat sits above the leaves */

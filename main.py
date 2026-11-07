@@ -247,22 +247,22 @@ def agent():
         res = requests.post(
             GROQ_URL,
             headers={"Authorization": f"Bearer {GROQ_KEY}"},
-            json={"model": AI_MODEL, "messages": messages, "max_tokens": 600},
-            timeout=60,
+            json={
+                "model": AI_MODEL,
+                "messages": messages
+            },
+            timeout=10
         )
         res.raise_for_status()
         reply = res.json()["choices"][0]["message"]["content"].strip()
-    except (requests.RequestException, KeyError, IndexError, ValueError):
+        
         with rooms_lock:
-            if history and history[-1]["role"] == "user":
-                history.pop()
-            add_message(room, "", "The agent did not answer.", kind="system")
-        return jsonify(ok=False, error="The agent did not answer."), 502
-
-    with rooms_lock:
-        history.append({"role": "assistant", "content": reply})
-        del history[:-MAX_AI_HISTORY]
-        add_message(room, "Agent", reply, kind="agent")
-
-    return jsonify(ok=True)
-#--------------------------------------------------------------
+            add_message(room, "Agent", reply)
+            history.append({"role": "assistant", "content": reply})
+            
+        return jsonify(ok=True)
+        
+    except (requests.RequestException, KeyError, IndexError, ValueError) as exc:
+        with rooms_lock:
+            add_message(room, "Agent", "Sorry, I am having trouble connecting to my brain right now.", kind="system")
+        return jsonify(ok=False, error=str(exc)), 502

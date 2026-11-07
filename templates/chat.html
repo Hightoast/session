@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
+  <div id="leaves-root" aria-hidden="true"></div>
   <!-- The whole chat. `inert` keeps it unusable until you join. -->
   <div class="app" id="app" inert>
     <header class="topbar">
@@ -61,7 +61,9 @@
       <button class="primary" type="submit">Join room</button>
     </form>
   </dialog>
-
+  <script src="{{ url_for('static', filename='leaves/leaves.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='chat.js') }}"></script>
+  
   <script src="{{ url_for('static', filename='chat.js') }}"></script>
 </body>
 </html>
